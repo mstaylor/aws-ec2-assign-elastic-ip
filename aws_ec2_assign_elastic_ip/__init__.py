@@ -23,6 +23,8 @@ logger = logging.getLogger('aws-ec2-assign-eip')
 
 region = args.region
 
+
+
 # Fetch instance metadata
 metadata = get_instance_metadata(timeout=1, num_retries=1)
 if metadata:
@@ -67,10 +69,10 @@ def main():
     if args.dry_run:
         logger.info('Would assign IP {0}'.format(address.public_ip))
     else:
-        _assign_address(instance_id, address)
+        _assign_address(instance_id, address, tries=0)
 
 
-def _assign_address(instance_id, address):
+def _assign_address(instance_id, address, tries):
     """ Assign an address to the given instance ID
 
     :type instance_id: str
@@ -97,6 +99,9 @@ def _assign_address(instance_id, address):
     except Exception as error:
         logger.error('Failed to associate {0} with {1}. Reason: {2}'.format(
             instance_id, address.public_ip, error))
+        if tries < args.maxRetries:
+            tries += tries + 1
+            _assign_address(instance_id, _get_unassociated_address(), tries)
         sys.exit(1)
 
     logger.info('Successfully associated Elastic IP {0} with {1}'.format(
